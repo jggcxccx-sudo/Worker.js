@@ -1,0 +1,36 @@
+export default {
+  async fetch(request, env) {
+    if (request.method !== "POST") return new Response("OK");
+    
+    const update = await request.json();
+    if (!update.message || !update.message.text) return new Response("OK");
+    
+    const chatId = update.message.chat.id;
+    const userText = update.message.text;
+    const botToken = env.TELEGRAM_BOT_TOKEN;
+    const apiKey = env.OPENROUTER_API_KEY;
+    
+    const aiRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.0-flash-exp:free",
+        messages: [{ role: "user", content: userText }]
+      })
+    });
+    
+    const aiData = await aiRes.json();
+    const reply = aiData.choices?.[0]?.message?.content || "متأسفم، پاسخی پیدا نکردم.";
+    
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: reply })
+    });
+    
+    return new Response("OK");
+  }
+};
